@@ -3,7 +3,13 @@
 import unittest
 
 from src.indexer import build_inverted_index
-from src.search import find_query, normalize_query, search_phrase, search_word
+from src.search import (
+    find_query,
+    normalize_query,
+    search_all_words,
+    search_phrase,
+    search_word,
+)
 
 
 class SearchTests(unittest.TestCase):
@@ -78,15 +84,27 @@ class SearchTests(unittest.TestCase):
 
     def test_find_query_handles_multi_word_queries(self) -> None:
         self.assertEqual(
-            find_query(self.index_data, "good books"),
+            find_query(self.index_data, "good friends"),
+            [
+                "https://quotes.toscrape.com/page/1/",
+                "https://quotes.toscrape.com/page/3/",
+            ],
+        )
+
+    def test_find_query_returns_empty_list_for_empty_query(self) -> None:
+        self.assertEqual(find_query(self.index_data, "   "), [])
+
+    def test_search_all_words_returns_pages_containing_every_query_word(self) -> None:
+        self.assertEqual(
+            search_all_words(self.index_data, "good books"),
             [
                 "https://quotes.toscrape.com/page/1/",
                 "https://quotes.toscrape.com/page/2/",
             ],
         )
 
-    def test_find_query_returns_empty_list_for_empty_query(self) -> None:
-        self.assertEqual(find_query(self.index_data, "   "), [])
+    def test_search_all_words_returns_empty_list_when_one_word_is_missing(self) -> None:
+        self.assertEqual(search_all_words(self.index_data, "good missing"), [])
 
 
 if __name__ == "__main__":

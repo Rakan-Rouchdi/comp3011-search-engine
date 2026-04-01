@@ -70,8 +70,26 @@ def search_phrase(index_data: dict[str, Any], query: str) -> list[str]:
     return matches
 
 
+def search_all_words(index_data: dict[str, Any], query: str) -> list[str]:
+    """Return URLs of pages that contain every word in the query."""
+
+    query_words = normalize_query(query)
+    if not query_words:
+        return []
+
+    inverted_index = index_data.get("inverted_index", {})
+    if any(word not in inverted_index for word in query_words):
+        return []
+
+    matching_pages = set(inverted_index[query_words[0]].keys())
+    for word in query_words[1:]:
+        matching_pages &= set(inverted_index[word].keys())
+
+    return sorted(matching_pages)
+
+
 def find_query(index_data: dict[str, Any], query: str) -> list[str]:
-    """Search for either a single word or a multi-word phrase."""
+    """Search for pages containing the query word or all query words."""
 
     query_words = normalize_query(query)
     if not query_words:
@@ -80,4 +98,4 @@ def find_query(index_data: dict[str, Any], query: str) -> list[str]:
     if len(query_words) == 1:
         return search_word(index_data, query_words[0])
 
-    return search_phrase(index_data, query)
+    return search_all_words(index_data, query)

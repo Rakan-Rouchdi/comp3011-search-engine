@@ -80,10 +80,10 @@ class MainTests(unittest.TestCase):
             index_path = Path(temp_dir) / "index.json"
             save_index(self.index_data, index_path)
 
-            exit_code, output = run_cli(["find", "good", "books"], index_path=index_path)
+            exit_code, output = run_cli(["find", "good", "friends"], index_path=index_path)
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("Pages matching 'good books':", output)
+        self.assertIn("Pages matching 'good friends':", output)
         self.assertIn("https://quotes.toscrape.com/page/1/", output)
 
     def test_run_cli_reports_unknown_commands(self) -> None:
