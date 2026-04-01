@@ -12,6 +12,7 @@ from src.crawler import (
     crawl_site,
     extract_links,
     fetch_page,
+    is_listing_page_url,
     normalize_url,
     parse_page,
 )
@@ -31,6 +32,7 @@ class CrawlerTests(unittest.TestCase):
             <a href="/page/1/">Page 1</a>
             <a href="/page/1/">Page 1 Duplicate</a>
             <a href="https://quotes.toscrape.com/page/2/">Page 2</a>
+            <a href="https://quotes.toscrape.com/author/Albert-Einstein">Author</a>
             <a href="https://example.com/page/3/">External</a>
           </body>
         </html>
@@ -48,6 +50,22 @@ class CrawlerTests(unittest.TestCase):
                 "https://quotes.toscrape.com/page/1",
                 "https://quotes.toscrape.com/page/2",
             ],
+        )
+
+    def test_is_listing_page_url_accepts_only_home_and_paginated_quote_pages(self) -> None:
+        base_url = "https://quotes.toscrape.com/"
+
+        self.assertTrue(is_listing_page_url("https://quotes.toscrape.com/", base_url))
+        self.assertTrue(
+            is_listing_page_url("https://quotes.toscrape.com/page/3", base_url)
+        )
+        self.assertFalse(
+            is_listing_page_url(
+                "https://quotes.toscrape.com/author/Albert-Einstein", base_url
+            )
+        )
+        self.assertFalse(
+            is_listing_page_url("https://quotes.toscrape.com/tag/life", base_url)
         )
 
     def test_parse_page_extracts_title_text_and_links(self) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from collections import deque
 from typing import Any
@@ -14,6 +15,7 @@ from bs4 import BeautifulSoup
 DEFAULT_BASE_URL = "https://quotes.toscrape.com/"
 DEFAULT_TIMEOUT = 10
 DEFAULT_POLITENESS_DELAY = 6.0
+LISTING_PAGE_PATTERN = r"^/page/\d+$"
 
 
 def normalize_url(url: str) -> str:
@@ -45,6 +47,16 @@ def is_internal_url(url: str, base_url: str) -> bool:
     return parsed_url.netloc == parsed_base_url.netloc
 
 
+def is_listing_page_url(url: str, base_url: str) -> bool:
+    """Return True for the homepage and paginated quote listing pages only."""
+
+    if not is_internal_url(url, base_url):
+        return False
+
+    path = urlparse(url).path or "/"
+    return path == "/" or bool(re.match(LISTING_PAGE_PATTERN, path))
+
+
 def extract_text(soup: BeautifulSoup) -> str:
     """Extract visible text from a page."""
 
@@ -56,7 +68,7 @@ def extract_text(soup: BeautifulSoup) -> str:
 
 
 def extract_links(soup: BeautifulSoup, current_url: str, base_url: str) -> list[str]:
-    """Return normalized internal links discovered on a page."""
+    """Return normalized quote-listing links discovered on a page."""
 
     internal_links: list[str] = []
     seen_links: set[str] = set()
@@ -65,7 +77,7 @@ def extract_links(soup: BeautifulSoup, current_url: str, base_url: str) -> list[
         absolute_url = urljoin(current_url, anchor["href"])
         normalized_url = normalize_url(absolute_url)
 
-        if not is_internal_url(normalized_url, base_url):
+        if not is_listing_page_url(normalized_url, base_url):
             continue
 
         if normalized_url in seen_links:
