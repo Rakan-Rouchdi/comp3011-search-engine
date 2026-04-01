@@ -1,10 +1,13 @@
 """Tests for crawler behavior."""
 
+import tempfile
 import unittest
 from unittest.mock import Mock
+from pathlib import Path
 
 import requests
 
+from src.main import build_search_index, load_saved_index
 from src.crawler import (
     crawl_site,
     extract_links,
@@ -158,6 +161,31 @@ class CrawlerTests(unittest.TestCase):
                 "https://quotes.toscrape.com/page/1",
             ],
         )
+
+    def test_build_search_index_crawls_builds_and_saves_index(self) -> None:
+        pages = [
+            {
+                "url": "https://quotes.toscrape.com/",
+                "title": "Home",
+                "text": "Good friends good books",
+                "links": [],
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "index.json"
+
+            index_data = build_search_index(
+                base_url="https://quotes.toscrape.com/",
+                output_path=output_path,
+                crawl_func=Mock(return_value=pages),
+            )
+
+            loaded_index = load_saved_index(output_path)
+
+        self.assertEqual(index_data, loaded_index)
+        self.assertEqual(index_data["base_url"], "https://quotes.toscrape.com/")
+        self.assertIn("good", index_data["inverted_index"])
 
 
 if __name__ == "__main__":
