@@ -1,0 +1,139 @@
+# COMP3011 Coursework 2: Website Search Tool
+
+This project is a Python command-line search tool for `https://quotes.toscrape.com/`.
+
+It can:
+- crawl the website
+- build an inverted index of words in each page
+- save and load the index from disk
+- print the index entry for a word
+- find pages containing a single word or an exact multi-word phrase
+
+## Features
+- Case-insensitive indexing and search
+- Inverted index stores both word frequency and word positions
+- Exact phrase search using recorded positions
+- Single-file JSON index storage
+- 6-second politeness delay between crawler requests
+- Unit tests for crawler, indexer, search, and CLI behavior
+
+## Project Structure
+```text
+src/
+  crawler.py
+  indexer.py
+  search.py
+  main.py
+tests/
+  test_crawler.py
+  test_indexer.py
+  test_search.py
+  test_main.py
+data/
+  index.json
+```
+
+## Requirements
+- Python 3
+- `requests`
+- `beautifulsoup4`
+
+Install dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Virtual Environment
+Create and activate a virtual environment before installing dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## How To Run
+Run commands from the project root.
+
+### Build the index
+```bash
+python3 -m src.main build
+```
+
+This will:
+- crawl `https://quotes.toscrape.com/`
+- build the inverted index
+- save it to `data/index.json`
+
+Note: this may take some time because the crawler respects a 6-second politeness window between requests.
+
+### Load the saved index
+```bash
+python3 -m src.main load
+```
+
+### Print the inverted index for one word
+```bash
+python3 -m src.main print nonsense
+```
+
+### Find matching pages for a query
+Single-word query:
+
+```bash
+python3 -m src.main find indifference
+```
+
+Multi-word phrase query:
+
+```bash
+python3 -m src.main find good friends
+```
+
+## Testing
+Run all tests with:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+## Design Summary
+- `crawler.py` fetches pages, extracts visible text, finds internal links, and respects the politeness delay.
+- `indexer.py` tokenizes text, builds the inverted index, and saves/loads JSON.
+- `search.py` handles single-word and exact phrase search.
+- `main.py` provides the coursework CLI commands.
+
+## Data Structure
+The inverted index uses this structure:
+
+```json
+{
+  "inverted_index": {
+    "good": {
+      "https://quotes.toscrape.com/page/1/": {
+        "frequency": 2,
+        "positions": [0, 2]
+      }
+    }
+  }
+}
+```
+
+This is simple to explain, easy to save as JSON, and supports exact phrase search.
+
+## Error Handling
+The program handles:
+- missing index file when `load`, `print`, or `find` is used before `build`
+- invalid JSON in the saved index file
+- unknown CLI commands
+- missing command arguments
+- crawler request failures
+
+## Notes For Demonstration
+Good points to mention in the video:
+- why the index is case-insensitive
+- why positions are stored as well as frequency
+- why JSON was chosen instead of a database
+- how the 6-second politeness window is enforced
+- how phrase search works using consecutive positions
