@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any
 
 
@@ -70,3 +72,28 @@ def get_word_entry(index_data: dict[str, Any], word: str) -> dict[str, Any]:
 
     normalized_word = normalize_text(word).strip()
     return index_data.get("inverted_index", {}).get(normalized_word, {})
+
+
+def save_index(index_data: dict[str, Any], file_path: str | Path) -> None:
+    """Save the full index data to a single JSON file."""
+
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", encoding="utf-8") as file_handle:
+        json.dump(index_data, file_handle, indent=2)
+
+
+def load_index(file_path: str | Path) -> dict[str, Any]:
+    """Load index data from a JSON file on disk."""
+
+    path = Path(file_path)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Index file not found: {path}")
+
+    try:
+        with path.open("r", encoding="utf-8") as file_handle:
+            return json.load(file_handle)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Index file is not valid JSON: {path}") from error
