@@ -39,6 +39,22 @@ def normalize_url(url: str) -> str:
     )
 
 
+def canonical_listing_url(url: str, base_url: str) -> str:
+    """Return the canonical URL for a quote listing page.
+
+    The homepage and /page/1 show the same quote listing content, so the
+    crawler stores them as one page to avoid duplicate indexing.
+    """
+
+    normalized_url = normalize_url(url)
+    parsed_url = urlparse(normalized_url)
+
+    if parsed_url.path == "/page/1":
+        return normalize_url(base_url)
+
+    return normalized_url
+
+
 def is_internal_url(url: str, base_url: str) -> bool:
     """Return True when a URL belongs to the target website."""
 
@@ -58,26 +74,39 @@ def is_listing_page_url(url: str, base_url: str) -> bool:
 
 
 def extract_text(soup: BeautifulSoup) -> str:
-    """Extract visible text from a page."""
+    """Extract visible quote listing text from a page."""
 
     for tag in soup(["script", "style"]):
         tag.decompose()
 
-    text = soup.get_text(separator=" ", strip=True)
+    quote_blocks = soup.select(".quote")
+    if quote_blocks:
+        text_parts = [
+            quote_block.get_text(separator=" ", strip=True)
+            for quote_block in quote_blocks
+        ]
+        text = " ".join(text_parts)
+    else:
+        text = soup.get_text(separator=" ", strip=True)
+
     return " ".join(text.split())
 
 
 def extract_links(soup: BeautifulSoup, current_url: str, base_url: str) -> list[str]:
     """Return normalized quote-listing links discovered on a page."""
 
+    current_listing_url = canonical_listing_url(current_url, base_url)
     internal_links: list[str] = []
     seen_links: set[str] = set()
 
     for anchor in soup.find_all("a", href=True):
         absolute_url = urljoin(current_url, anchor["href"])
-        normalized_url = normalize_url(absolute_url)
+        normalized_url = canonical_listing_url(absolute_url, base_url)
 
         if not is_listing_page_url(normalized_url, base_url):
+            continue
+
+        if normalized_url == current_listing_url:
             continue
 
         if normalized_url in seen_links:
@@ -96,7 +125,7 @@ def parse_page(html: str, url: str, base_url: str) -> dict[str, Any]:
     title = soup.title.get_text(strip=True) if soup.title else ""
 
     return {
-        "url": normalize_url(url),
+        "url": canonical_listing_url(url, base_url),
         "title": title,
         "text": extract_text(soup),
         "links": extract_links(soup, url, base_url),
@@ -138,7 +167,7 @@ def crawl_site(
     """Crawl internal pages from the target site using breadth-first search."""
 
     active_session = session or requests.Session()
-    normalized_base_url = normalize_url(base_url)
+    normalized_base_url = canonical_listing_url(base_url, base_url)
     queue = deque([normalized_base_url])
     visited: set[str] = set()
     crawled_pages: list[dict[str, Any]] = []

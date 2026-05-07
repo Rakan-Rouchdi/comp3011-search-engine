@@ -7,15 +7,30 @@ It can:
 - build an inverted index of words in each page
 - save and load the index from disk
 - print the index entry for a word
-- find pages containing a single word or an exact multi-word phrase
+- find pages containing a single word or all words in a multi-word query
 
 ## Features
 - Case-insensitive indexing and search
 - Inverted index stores both word frequency and word positions
-- Exact phrase search using recorded positions
+- Multi-word search returns pages containing all query words
 - Single-file JSON index storage
 - 6-second politeness delay between crawler requests
 - Unit tests for crawler, indexer, search, and CLI behavior
+
+## Crawl Scope
+The crawler is intentionally scoped to the main quote listing pages of `https://quotes.toscrape.com/`.
+
+It crawls:
+- the homepage, which represents the first quote listing page
+- paginated listing pages such as `/page/2`, `/page/3`, and so on
+
+It does not crawl:
+- author pages
+- tag pages
+- login pages
+- other non-listing internal links
+
+The homepage and `/page/1` contain the same first listing page, so the crawler treats them as one page to avoid duplicate indexing.
 
 ## Project Structure
 ```text
@@ -85,11 +100,13 @@ Single-word query:
 python3 -m src.main find indifference
 ```
 
-Multi-word phrase query:
+Multi-word query:
 
 ```bash
 python3 -m src.main find good friends
 ```
+
+For multi-word queries, `find` returns pages that contain all query words. The words do not need to be adjacent.
 
 ## Testing
 Run all tests with:
@@ -101,7 +118,7 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 ## Design Summary
 - `crawler.py` fetches pages, extracts visible text, finds internal links, and respects the politeness delay.
 - `indexer.py` tokenizes text, builds the inverted index, and saves/loads JSON.
-- `search.py` handles single-word and exact phrase search.
+- `search.py` handles single-word search, multi-word all-terms search, and a tested phrase-search helper.
 - `main.py` provides the coursework CLI commands.
 
 ## Data Structure
@@ -120,7 +137,7 @@ The inverted index uses this structure:
 }
 ```
 
-This is simple to explain, easy to save as JSON, and supports exact phrase search.
+This is simple to explain, easy to save as JSON, and keeps enough position information for phrase-style checks if needed.
 
 ## Error Handling
 The program handles:
@@ -136,4 +153,4 @@ Good points to mention in the video:
 - why positions are stored as well as frequency
 - why JSON was chosen instead of a database
 - how the 6-second politeness window is enforced
-- how phrase search works using consecutive positions
+- why multi-word `find` uses the inverted index to intersect pages containing all query words

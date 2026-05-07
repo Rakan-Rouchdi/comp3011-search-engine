@@ -9,6 +9,7 @@ import requests
 
 from src.main import build_search_index, load_saved_index
 from src.crawler import (
+    canonical_listing_url,
     crawl_site,
     extract_links,
     fetch_page,
@@ -23,6 +24,17 @@ class CrawlerTests(unittest.TestCase):
         self.assertEqual(
             normalize_url("https://quotes.toscrape.com/page/1/#top"),
             "https://quotes.toscrape.com/page/1",
+        )
+
+    def test_canonical_listing_url_treats_homepage_and_page_one_as_same_page(
+        self,
+    ) -> None:
+        self.assertEqual(
+            canonical_listing_url(
+                "https://quotes.toscrape.com/page/1/",
+                "https://quotes.toscrape.com/",
+            ),
+            "https://quotes.toscrape.com/",
         )
 
     def test_extract_links_returns_unique_internal_links_only(self) -> None:
@@ -47,7 +59,6 @@ class CrawlerTests(unittest.TestCase):
         self.assertEqual(
             page_data["links"],
             [
-                "https://quotes.toscrape.com/page/1",
                 "https://quotes.toscrape.com/page/2",
             ],
         )
@@ -73,7 +84,7 @@ class CrawlerTests(unittest.TestCase):
         <html>
           <head><title>Quotes to Scrape</title></head>
           <body>
-            <div>Good friends, good books.</div>
+            <div class="quote">Good friends, good books.</div>
             <a href="/page/2/">Next</a>
           </body>
         </html>
@@ -88,6 +99,33 @@ class CrawlerTests(unittest.TestCase):
         self.assertEqual(page_data["title"], "Quotes to Scrape")
         self.assertIn("Good friends, good books.", page_data["text"])
         self.assertEqual(page_data["links"], ["https://quotes.toscrape.com/page/2"])
+
+    def test_parse_page_indexes_quote_content_not_page_navigation(self) -> None:
+        html = """
+        <html>
+          <head><title>Quotes to Scrape</title></head>
+          <body>
+            <a href="/login">Login</a>
+            <div class="quote">
+              <span class="text">The world as we have created it.</span>
+              <small class="author">Albert Einstein</small>
+              <a class="tag" href="/tag/world/">world</a>
+            </div>
+            <li class="next"><a href="/page/2/">Next</a></li>
+          </body>
+        </html>
+        """
+
+        page_data = parse_page(
+            html,
+            "https://quotes.toscrape.com/",
+            "https://quotes.toscrape.com/",
+        )
+
+        self.assertIn("The world as we have created it.", page_data["text"])
+        self.assertIn("Albert Einstein", page_data["text"])
+        self.assertNotIn("Login", page_data["text"])
+        self.assertNotIn("Next", page_data["text"])
 
     def test_fetch_page_waits_for_politeness_window(self) -> None:
         session = Mock()
@@ -108,7 +146,9 @@ class CrawlerTests(unittest.TestCase):
         self.assertEqual(last_request_time, 16.0)
         self.assertEqual(sleep_calls, [3.0])
 
-    def test_crawl_site_skips_duplicate_links_and_continues_after_failure(self) -> None:
+    def test_crawl_site_skips_duplicate_page_one_and_continues_after_failure(
+        self,
+    ) -> None:
         session = Mock()
 
         homepage_response = Mock()
@@ -125,20 +165,20 @@ class CrawlerTests(unittest.TestCase):
         """
         homepage_response.raise_for_status = Mock()
 
-        page_one_response = Mock()
-        page_one_response.text = """
+        page_two_response = Mock()
+        page_two_response.text = """
         <html>
-          <head><title>Page 1</title></head>
-          <body><p>First quote page</p></body>
+          <head><title>Page 2</title></head>
+          <body><p>Second quote page</p></body>
         </html>
         """
-        page_one_response.raise_for_status = Mock()
+        page_two_response.raise_for_status = Mock()
 
         def get_side_effect(url: str, timeout: int) -> Mock:
             if url == "https://quotes.toscrape.com/":
                 return homepage_response
-            if url == "https://quotes.toscrape.com/page/1":
-                return page_one_response
+            if url == "https://quotes.toscrape.com/page/2":
+                return page_two_response
             raise requests.RequestException("Page failed to load")
 
         session.get.side_effect = get_side_effect
@@ -153,10 +193,10 @@ class CrawlerTests(unittest.TestCase):
             [page["url"] for page in pages],
             [
                 "https://quotes.toscrape.com/",
-                "https://quotes.toscrape.com/page/1",
+                "https://quotes.toscrape.com/page/2",
             ],
         )
-        self.assertEqual(session.get.call_count, 3)
+        self.assertEqual(session.get.call_count, 2)
 
     def test_extract_links_helper_handles_relative_urls(self) -> None:
         from bs4 import BeautifulSoup
@@ -176,7 +216,6 @@ class CrawlerTests(unittest.TestCase):
             links,
             [
                 "https://quotes.toscrape.com/page/3",
-                "https://quotes.toscrape.com/page/1",
             ],
         )
 
