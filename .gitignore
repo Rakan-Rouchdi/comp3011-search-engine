@@ -7,9 +7,6 @@ __pycache__/
 venv/
 env/
 
-# Generated coursework data
-data/index.json
-
 # Test and tooling caches
 .coverage
 .pytest_cache/

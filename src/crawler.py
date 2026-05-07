@@ -191,6 +191,7 @@ def crawl_site(
                 time_func=time_func,
             )
         except requests.RequestException:
+            last_request_time = time_func()
             continue
 
         page_data = parse_page(html, current_url, normalized_base_url)

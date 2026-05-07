@@ -198,6 +198,59 @@ class CrawlerTests(unittest.TestCase):
         )
         self.assertEqual(session.get.call_count, 2)
 
+    def test_crawl_site_waits_after_failed_request_before_next_request(self) -> None:
+        session = Mock()
+
+        homepage_response = Mock()
+        homepage_response.text = """
+        <html>
+          <head><title>Home</title></head>
+          <body>
+            <a href="/page/2/">Page 2</a>
+            <a href="/page/3/">Page 3</a>
+          </body>
+        </html>
+        """
+        homepage_response.raise_for_status = Mock()
+
+        page_three_response = Mock()
+        page_three_response.text = """
+        <html>
+          <head><title>Page 3</title></head>
+          <body><p>Third quote page</p></body>
+        </html>
+        """
+        page_three_response.raise_for_status = Mock()
+
+        def get_side_effect(url: str, timeout: int) -> Mock:
+            if url == "https://quotes.toscrape.com/":
+                return homepage_response
+            if url == "https://quotes.toscrape.com/page/2":
+                raise requests.RequestException("Page failed to load")
+            if url == "https://quotes.toscrape.com/page/3":
+                return page_three_response
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        session.get.side_effect = get_side_effect
+        sleep_calls: list[float] = []
+
+        pages = crawl_site(
+            "https://quotes.toscrape.com/",
+            politeness_delay=6.0,
+            session=session,
+            sleep_func=sleep_calls.append,
+            time_func=Mock(side_effect=[0.0, 1.0, 3.0, 4.0, 7.0, 10.0]),
+        )
+
+        self.assertEqual(
+            [page["url"] for page in pages],
+            [
+                "https://quotes.toscrape.com/",
+                "https://quotes.toscrape.com/page/3",
+            ],
+        )
+        self.assertEqual(sleep_calls, [4.0, 3.0])
+
     def test_extract_links_helper_handles_relative_urls(self) -> None:
         from bs4 import BeautifulSoup
 
