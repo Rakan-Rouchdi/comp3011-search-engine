@@ -81,6 +81,8 @@ def search_all_words(index_data: dict[str, Any], query: str) -> list[str]:
     if any(word not in inverted_index for word in query_words):
         return []
 
+    # Multi-word find is an all-terms search: a page must contain every query
+    # word, but the words do not need to be next to each other.
     matching_pages = set(inverted_index[query_words[0]].keys())
     for word in query_words[1:]:
         matching_pages &= set(inverted_index[word].keys())

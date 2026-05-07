@@ -79,6 +79,8 @@ def extract_text(soup: BeautifulSoup) -> str:
     for tag in soup(["script", "style"]):
         tag.decompose()
 
+    # On quotes.toscrape.com the quote cards contain the searchable content.
+    # Using them avoids indexing page navigation such as Login or Next.
     quote_blocks = soup.select(".quote")
     if quote_blocks:
         text_parts = [
@@ -103,9 +105,12 @@ def extract_links(soup: BeautifulSoup, current_url: str, base_url: str) -> list[
         absolute_url = urljoin(current_url, anchor["href"])
         normalized_url = canonical_listing_url(absolute_url, base_url)
 
+        # Stay focused on the main quote listing pages for this coursework.
         if not is_listing_page_url(normalized_url, base_url):
             continue
 
+        # /page/1 has the same content as the homepage, so skip self-links
+        # after canonicalising them to avoid duplicate indexing.
         if normalized_url == current_listing_url:
             continue
 
@@ -191,6 +196,8 @@ def crawl_site(
                 time_func=time_func,
             )
         except requests.RequestException:
+            # Failed attempts still count for politeness: the next request
+            # should wait relative to this attempted request.
             last_request_time = time_func()
             continue
 

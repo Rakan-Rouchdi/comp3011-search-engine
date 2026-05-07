@@ -53,6 +53,8 @@ def build_inverted_index(pages: list[dict[str, Any]]) -> dict[str, Any]:
         page_metadata[url] = build_page_entry(page)
 
         for position, word in enumerate(tokens):
+            # Each posting stores the coursework-required statistics for this
+            # word on this page: how often it appears and where it appears.
             word_entry = inverted_index.setdefault(word, {})
             page_entry = word_entry.setdefault(
                 url,

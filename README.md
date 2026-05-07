@@ -115,6 +115,27 @@ Run all tests with:
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
+## Testing Strategy
+The tests are split by module so each part of the search tool can be checked separately before testing the full workflow.
+
+- `test_crawler.py` checks URL normalization, quote-listing crawl scope, duplicate `/page/1` handling, quote-content extraction, request failures, and the 6-second politeness rule.
+- `test_indexer.py` checks tokenization, lowercase indexing, word frequency, word positions, page metadata, and JSON save/load behavior.
+- `test_search.py` checks single-word search, multi-word all-query-word search, case-insensitive queries, missing words, empty queries, and the phrase-search helper.
+- `test_main.py` checks the command-line workflow for `build`, `load`, `print`, `find`, missing arguments, and unknown commands.
+
+Crawler tests use mocked responses instead of making live network requests. Politeness tests use fake time and fake sleep functions, so they prove the 6-second delay logic without making the test suite wait. Persistence tests use temporary directories so they do not depend on or damage the real saved index file.
+
+## Manual Verification
+After building the index, the saved file can be checked with:
+
+```bash
+python3 -m src.main load
+python3 -m src.main print good
+python3 -m src.main find good friends
+```
+
+These commands verify that the saved index can be loaded, printed, and searched from the command line.
+
 ## Design Summary
 - `crawler.py` fetches pages, extracts visible text, finds internal links, and respects the politeness delay.
 - `indexer.py` tokenizes text, builds the inverted index, and saves/loads JSON.
@@ -147,10 +168,9 @@ The program handles:
 - missing command arguments
 - crawler request failures
 
-## Notes For Demonstration
-Good points to mention in the video:
-- why the index is case-insensitive
-- why positions are stored as well as frequency
-- why JSON was chosen instead of a database
-- how the 6-second politeness window is enforced
-- why multi-word `find` uses the inverted index to intersect pages containing all query words
+## Design Rationale
+- Case-insensitive indexing keeps search behaviour predictable for users.
+- Word positions are stored alongside frequency so the index contains enough information for more precise search operations.
+- JSON storage keeps the saved index readable and easy to inspect for a small coursework dataset.
+- The crawler uses a 6-second politeness window to avoid sending rapid repeated requests to the website.
+- Multi-word `find` uses the inverted index to intersect pages containing all query words, which is efficient and simple to explain.
