@@ -174,3 +174,12 @@ The program handles:
 - JSON storage keeps the saved index readable and easy to inspect for a small coursework dataset.
 - The crawler uses a 6-second politeness window to avoid sending rapid repeated requests to the website.
 - Multi-word `find` uses the inverted index to intersect pages containing all query words, which is efficient and simple to explain.
+
+## GenAI Statement
+Generative AI tools were used as supporting tools during this coursework. ChatGPT was used mainly to interpret the brief, plan the development workflow, evaluate design decisions, and structure the explanation for the final video. Codex was used mainly for repository auditing, code review, test suggestions, and identifying small implementation risks.
+
+This support was useful for reviewing the project from a stricter perspective. For example, the review process identified that `/` and `/page/1` could be indexed as duplicate versions of the first quote listing page, and it also highlighted a politeness edge case where a failed request still needed to count as a request attempt. These issues were then fixed and verified with focused tests.
+
+AI suggestions were not accepted automatically. One important example was multi-word search: an exact phrase interpretation was considered, but the final implementation keeps all-query-word matching because the coursework example indicates that `find good friends` should return pages containing both `good` and `friends`. This required comparing the AI suggestion against the brief, checking the code behaviour, and justifying the final design decision.
+
+Overall, GenAI improved development speed and supported critical review, but responsibility for understanding, testing, and validating the final implementation remained with the developer.
